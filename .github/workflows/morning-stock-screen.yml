@@ -1,0 +1,77 @@
+name: Morning Stock Screen
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 08:00 JST on weekdays = 23:00 UTC on the previous day.
+    - cron: "0 23 * * 0-4"
+
+permissions:
+  contents: read
+
+jobs:
+  morning-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Materialize Google secrets
+        env:
+          GOOGLE_OAUTH_CLIENT_JSON: ${{ secrets.GOOGLE_OAUTH_CLIENT_JSON }}
+          GOOGLE_TOKEN_JSON: ${{ secrets.GOOGLE_TOKEN_JSON }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          required = ["GOOGLE_OAUTH_CLIENT_JSON", "GOOGLE_TOKEN_JSON"]
+          missing = [name for name in required if not os.environ.get(name)]
+          if missing:
+              raise SystemExit(f"Missing GitHub Actions secrets: {', '.join(missing)}")
+
+          secrets_dir = Path("secrets")
+          secrets_dir.mkdir(exist_ok=True)
+          (secrets_dir / "google-oauth-client.json").write_text(
+              os.environ["GOOGLE_OAUTH_CLIENT_JSON"],
+              encoding="utf-8",
+          )
+          (secrets_dir / "google-token.json").write_text(
+              os.environ["GOOGLE_TOKEN_JSON"],
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Build morning data
+        run: |
+          python -B scripts/refresh_watchlist_from_universe.py
+          python -B scripts/build_morning_candidates.py
+
+      - name: Sync Google Sheets
+        run: python -B scripts/sync_google_sheets.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: morning-stock-screen
+          path: |
+            data/watchlist.csv
+            data/watchlist_live.csv
+            data/sbi_candidates.csv
+            data/sheets_candidates.csv
+            data/sheets_rationale.csv
+            data/sheets_morning_memo.csv
+            reports/morning_summary.md

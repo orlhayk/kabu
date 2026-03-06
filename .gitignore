@@ -1,0 +1,9 @@
+__pycache__/
+data/watchlist_scored.csv
+data/watchlist_live.csv
+data/sbi_candidates.csv
+data/sheets_candidates.csv
+data/sheets_rationale.csv
+data/sheets_morning_memo.csv
+secrets/
+tmp_stock_screening/

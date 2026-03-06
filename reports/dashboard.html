@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Morning Stock Dashboard</title>
+  <style>
+    :root {
+      --bg: #f5f1e8;
+      --panel: #fffdf8;
+      --ink: #1f2a2e;
+      --muted: #6f7b80;
+      --line: #d9d1c3;
+      --s: #1f7a4d;
+      --a: #9a6700;
+      --b: #8c5a00;
+      --c: #7a3442;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Yu Gothic UI", "Hiragino Sans", sans-serif;
+      background: linear-gradient(180deg, #efe4d1 0%, var(--bg) 100%);
+      color: var(--ink);
+    }
+    .wrap {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    .hero p {
+      margin: 4px 0;
+      color: var(--muted);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+      margin: 20px 0 24px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(31, 42, 46, 0.06);
+    }
+    .top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+    }
+    .code {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+    }
+    .card h2 {
+      margin: 4px 0 0;
+      font-size: 20px;
+    }
+    .badge {
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .rank-S { background: #dff3e8; color: var(--s); }
+    .rank-A { background: #fff0c7; color: var(--a); }
+    .rank-B { background: #f6e0b6; color: var(--b); }
+    .rank-C { background: #f7d9de; color: var(--c); }
+    .price {
+      margin: 14px 0 8px;
+      font-size: 21px;
+      font-weight: 700;
+    }
+    .meta, .signal, .detail {
+      margin: 6px 0 0;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .wait { color: var(--c); }
+    .detail { font-weight: 700; }
+    .table-wrap {
+      overflow-x: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <h1>朝の株候補ダッシュボード</h1>
+      <p>地合い: 弱気 / VIX 25.76 / 日経5日 -5.49%</p>
+      <p>弱気相場。高品質株は前日比-3%~-5%の押し目を狙う</p>
+    </section>
+    <section class="grid">
+      
+            <article class="card">
+              <div class="top">
+                <div>
+                  <p class="code">5108</p>
+                  <h2>ブリヂストン</h2>
+                </div>
+                <span class="badge rank-">前日比-3%で買い</span>
+              </div>
+              <p class="price">まだ待ち 3412.36 円</p>
+              <p class="meta">買い 3377.54 円</p>
+              <p class="detail">前日比-3%で買い</p>
+            </article>
+            
+            <article class="card">
+              <div class="top">
+                <div>
+                  <p class="code">9432</p>
+                  <h2>NTT</h2>
+                </div>
+                <span class="badge rank-">前日比-5%で買い</span>
+              </div>
+              <p class="price">まだ待ち 145.69 円</p>
+              <p class="meta">買い 142.69 円</p>
+              <p class="detail">前日比-5%で買い</p>
+            </article>
+            
+            <article class="card">
+              <div class="top">
+                <div>
+                  <p class="code">6301</p>
+                  <h2>コマツ</h2>
+                </div>
+                <span class="badge rank-">まあ1株エントリー可</span>
+              </div>
+              <p class="price">まだ待ち 7134.00 円</p>
+              <p class="meta">買い 7134.00 円</p>
+              <p class="detail">まあ1株エントリー可</p>
+            </article>
+            
+            <article class="card">
+              <div class="top">
+                <div>
+                  <p class="code">1928</p>
+                  <h2>積水ハウス</h2>
+                </div>
+                <span class="badge rank-">前日比-5%で買い</span>
+              </div>
+              <p class="price">まだ待ち 3458.05 円</p>
+              <p class="meta">買い 3386.75 円</p>
+              <p class="detail">前日比-5%で買い</p>
+            </article>
+            
+            <article class="card">
+              <div class="top">
+                <div>
+                  <p class="code">2503</p>
+                  <h2>キリンHD</h2>
+                </div>
+                <span class="badge rank-">まあ1株エントリー可</span>
+              </div>
+              <p class="price">まだ待ち 2562.50 円</p>
+              <p class="meta">買い 2562.50 円</p>
+              <p class="detail">まあ1株エントリー可</p>
+            </article>
+            
+            <article class="card">
+              <div class="top">
+                <div>
+                  <p class="code">9433</p>
+                  <h2>KDDI</h2>
+                </div>
+                <span class="badge rank-">今は買わない（高値圏）</span>
+              </div>
+              <p class="price">まだ待ち 2598.63 円</p>
+              <p class="meta">買い 2545.05 円</p>
+              <p class="detail">今は買わない（高値圏）</p>
+            </article>
+            
+    </section>
+    <section class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>順</th>
+            <th>コード</th>
+            <th>銘柄</th>
+            <th>アクション</th>
+            <th>まだ待ち</th>
+            <th>買い</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td>1</td>
+              <td>5108</td>
+              <td>ブリヂストン</td>
+              <td>前日比-3%で買い</td>
+              <td>3412.36</td>
+              <td>3377.54</td>
+            </tr>
+            
+            <tr>
+              <td>2</td>
+              <td>9432</td>
+              <td>NTT</td>
+              <td>前日比-5%で買い</td>
+              <td>145.69</td>
+              <td>142.69</td>
+            </tr>
+            
+            <tr>
+              <td>3</td>
+              <td>6301</td>
+              <td>コマツ</td>
+              <td>まあ1株エントリー可</td>
+              <td>7134.00</td>
+              <td>7134.00</td>
+            </tr>
+            
+            <tr>
+              <td>4</td>
+              <td>1928</td>
+              <td>積水ハウス</td>
+              <td>前日比-5%で買い</td>
+              <td>3458.05</td>
+              <td>3386.75</td>
+            </tr>
+            
+            <tr>
+              <td>5</td>
+              <td>2503</td>
+              <td>キリンHD</td>
+              <td>まあ1株エントリー可</td>
+              <td>2562.50</td>
+              <td>2562.50</td>
+            </tr>
+            
+            <tr>
+              <td>6</td>
+              <td>9433</td>
+              <td>KDDI</td>
+              <td>今は買わない（高値圏）</td>
+              <td>2598.63</td>
+              <td>2545.05</td>
+            </tr>
+            
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>
