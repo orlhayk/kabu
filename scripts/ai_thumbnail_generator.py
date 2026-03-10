@@ -144,14 +144,33 @@ def _gen_gemini(prompt: str) -> Image.Image:
     return img_bytes.resize((WIDTH, HEIGHT)).convert("RGB")
 
 
-# ─── 背景画像を取得（Gemini優先 → Pollinationsフォールバック）──
+# ─── 背景画像を取得（Gemini → Pollinations → Pillowフォールバック）──
+def _gen_pillow_bg() -> Image.Image:
+    """AI生成が使えない場合のPillowグラデーション背景"""
+    import struct
+    bg = Image.new("RGB", (WIDTH, HEIGHT))
+    pixels = []
+    for y in range(HEIGHT):
+        for x in range(WIDTH):
+            r = int(8  + 4  * x / WIDTH)
+            g = int(20 + 12 * (1 - y / HEIGHT))
+            b = int(35 + 20 * (1 - x / WIDTH))
+            pixels.append((r, g, b))
+    bg.putdata(pixels)
+    return bg
+
+
 def _get_background(prompt: str) -> Image.Image:
     if GEMINI_API_KEY:
         try:
             return _gen_gemini(prompt)
         except Exception as e:
             print(f"  Gemini失敗 ({e})、Pollinations.aiにフォールバック...")
-    return _gen_pollinations(prompt)
+    try:
+        return _gen_pollinations(prompt)
+    except Exception as e:
+        print(f"  Pollinations.ai失敗 ({e})、Pillowグラデーションにフォールバック...")
+        return _gen_pillow_bg()
 
 
 # ─── テキスト合成 ─────────────────────────────────────
