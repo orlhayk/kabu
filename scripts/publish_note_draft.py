@@ -1,6 +1,7 @@
 """publish_note_draft.py
 
 note.com の下書きを自動保存するスクリプト。
+サムネイル（アイキャッチ）もタイトルから自動生成してアップロードする。
 
 【初回】
   python scripts/publish_note_draft.py --login
@@ -8,7 +9,7 @@ note.com の下書きを自動保存するスクリプト。
 
 【2回目以降】
   python scripts/publish_note_draft.py
-  → 自動でnote.comに下書き保存
+  → サムネ自動生成 → note.comに下書き保存 → サムネをアップロード
 """
 
 from __future__ import annotations
@@ -29,9 +30,22 @@ except ImportError:
     print("  python -m playwright install chrome")
     sys.exit(1)
 
-ROOT         = Path(__file__).resolve().parents[1]
-DRAFT_MD     = ROOT / "docs" / "drafts" / "stock_system_note_draft.md"
-PROFILE_DIR  = ROOT / "secrets" / "note-profile"
+ROOT          = Path(__file__).resolve().parents[1]
+DRAFT_MD      = ROOT / "docs" / "drafts" / "stock_system_note_draft.md"
+PROFILE_DIR   = ROOT / "secrets" / "note-profile"
+THUMBNAIL_OUT = ROOT / "reports" / "note_thumbnail.png"
+
+# AI サムネ生成器を同ディレクトリから読み込む（Pillow専用にフォールバック）
+sys.path.insert(0, str(ROOT / "scripts"))
+try:
+    from ai_thumbnail_generator import generate as generate_thumbnail
+    HAS_THUMBNAIL = True
+except ImportError:
+    try:
+        from note_thumbnail_generator import generate as generate_thumbnail
+        HAS_THUMBNAIL = True
+    except ImportError:
+        HAS_THUMBNAIL = False
 
 
 # ---------- Markdown → note投稿用テキスト ----------
@@ -102,6 +116,69 @@ def login_and_save_session() -> None:
     print("セッションを保存しました。次回から自動でログイン状態が使われます。")
 
 
+def _upload_thumbnail(page, thumbnail_path: Path) -> None:
+    """note.com のアイキャッチ画像をアップロードする。"""
+    # 公開設定パネルを開く（サムネイル設定はここにある）
+    panel_opened = False
+    for selector in [
+        'button:has-text("公開設定")',
+        'button:has-text("公開する")',
+        '[data-testid="publish-settings-button"]',
+        'button[aria-label*="公開"]',
+    ]:
+        try:
+            btn = page.locator(selector).first
+            if btn.is_visible(timeout=3000):
+                btn.click()
+                page.wait_for_timeout(1500)
+                panel_opened = True
+                break
+        except PWTimeout:
+            continue
+
+    if not panel_opened:
+        print("  ⚠ 公開設定パネルが開けませんでした。手動でアイキャッチを設定してください。")
+        return
+
+    # file input を探してアップロード（note.comは通常 accept="image/*"）
+    uploaded = False
+    for selector in [
+        'input[type="file"][accept*="image"]',
+        'input[type="file"]',
+    ]:
+        try:
+            fi = page.locator(selector)
+            if fi.count() > 0:
+                fi.first.set_input_files(str(thumbnail_path))
+                page.wait_for_timeout(3000)
+                print("  ✅ アイキャッチアップロード完了")
+                uploaded = True
+                break
+        except Exception as e:
+            print(f"  ⚠ アップロード試行失敗 ({e})")
+
+    if not uploaded:
+        print("  ⚠ ファイル入力が見つかりませんでした。手動でアイキャッチを設定してください。")
+
+    # パネルを閉じる（Escape or 閉じるボタン）
+    for close_sel in [
+        'button:has-text("閉じる")',
+        'button[aria-label*="閉じ"]',
+        '[data-testid="close-button"]',
+    ]:
+        try:
+            btn = page.locator(close_sel).first
+            if btn.is_visible(timeout=2000):
+                btn.click()
+                page.wait_for_timeout(500)
+                break
+        except PWTimeout:
+            pass
+    else:
+        page.keyboard.press("Escape")
+        page.wait_for_timeout(500)
+
+
 def publish_draft(dry_run: bool = False) -> None:
     if not DRAFT_MD.exists():
         print(f"下書きファイルが見つかりません: {DRAFT_MD}")
@@ -115,6 +192,17 @@ def publish_draft(dry_run: bool = False) -> None:
         print("\n--- DRY RUN: 実際には投稿しません ---")
         print(body[:300])
         return
+
+    # ---- サムネイル生成（ブラウザ起動前に済ませる）----
+    thumbnail_path: Path | None = None
+    if HAS_THUMBNAIL:
+        try:
+            THUMBNAIL_OUT.parent.mkdir(parents=True, exist_ok=True)
+            print("\nAI サムネイルを生成中...")
+            generate_thumbnail(title, THUMBNAIL_OUT)
+            thumbnail_path = THUMBNAIL_OUT
+        except Exception as e:
+            print(f"⚠ サムネイル生成失敗 ({e})。スキップします。")
 
     PROFILE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -195,6 +283,11 @@ def publish_draft(dry_run: bool = False) -> None:
             page.wait_for_timeout(2000)
             print(f"\n✅ 下書き保存完了！")
             print(f"URL: {page.url}")
+
+        # ---- アイキャッチ（ヘッダー画像）アップロード ----
+        if saved and thumbnail_path and thumbnail_path.exists():
+            print("\nアイキャッチ画像をアップロード中...")
+            _upload_thumbnail(page, thumbnail_path)
 
         print("3秒後にブラウザを閉じます...")
         time.sleep(3)
