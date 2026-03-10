@@ -7,3 +7,4 @@ data/sheets_rationale.csv
 data/sheets_morning_memo.csv
 secrets/
 tmp_stock_screening/
+.env

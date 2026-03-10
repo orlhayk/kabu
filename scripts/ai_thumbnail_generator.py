@@ -38,6 +38,20 @@ except ImportError:
     print("Pillow が未インストールです: pip install Pillow")
     sys.exit(1)
 
+# .env を自動読み込み（python-dotenv があれば）
+_ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
+try:
+    from dotenv import load_dotenv
+    load_dotenv(_ENV_FILE)
+except ImportError:
+    # dotenv なしでも動く（環境変数から直接読む）
+    if _ENV_FILE.exists():
+        for _line in _ENV_FILE.read_text(encoding="utf-8").splitlines():
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _, _v = _line.partition("=")
+                os.environ.setdefault(_k.strip(), _v.strip())
+
 # ─── 設定 ────────────────────────────────────────────
 WIDTH, HEIGHT = 1280, 670
 FONT_CANDIDATES = [
