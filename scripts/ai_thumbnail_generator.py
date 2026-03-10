@@ -116,7 +116,8 @@ def _gen_pollinations(prompt: str) -> Image.Image:
         f"?width={WIDTH}&height={HEIGHT}&nologo=1&seed={int(time.time()) % 9999}"
     )
     print(f"  Pollinations.ai にリクエスト中...")
-    with urllib.request.urlopen(url, timeout=90) as resp:
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=90) as resp:
         return Image.open(io.BytesIO(resp.read())).convert("RGB")
 
 
@@ -245,6 +246,9 @@ def generate(
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # 【下書き】などのプレフィックスをサムネタイトルから除去
+    title = re.sub(r"^【.{2,6}】\s*", "", title).strip()
 
     prompt = _build_prompt(title, style)
     print(f"[thumbnail] タイトル: {title}")
