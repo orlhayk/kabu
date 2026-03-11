@@ -138,24 +138,35 @@ def _gen_pollinations(prompt: str) -> Image.Image:
 # ─── 画像生成: Gemini Imagen（無料枠あり） ───────────
 def _gen_gemini(prompt: str) -> Image.Image:
     try:
-        import google.generativeai as genai
+        from google import genai
+        from google.genai import types
     except ImportError:
-        raise RuntimeError("google-generativeai が未インストール: pip install google-generativeai")
+        raise RuntimeError("google-genai が未インストール: pip install google-genai")
 
-    genai.configure(api_key=GEMINI_API_KEY)
+    client = genai.Client(api_key=GEMINI_API_KEY)
     print("  Gemini Imagen にリクエスト中...")
 
-    model = genai.ImageGenerationModel("imagen-3.0-generate-001")
-    result = model.generate_images(
+    response = client.models.generate_images(
+        model="imagen-3.0-generate-002",
         prompt=prompt,
-        number_of_images=1,
-        aspect_ratio="16:9",
-        safety_filter_level="block_only_high",
-        person_generation="dont_allow",
+        config=types.GenerateImagesConfig(
+            number_of_images=1,
+            output_mime_type="image/png",
+        ),
     )
-    img_bytes = result.images[0]._pil_image if hasattr(result.images[0], "_pil_image") \
-                else Image.open(io.BytesIO(result.images[0].image.image_bytes))
-    return img_bytes.resize((WIDTH, HEIGHT)).convert("RGB")
+    if not response.generated_images:
+        raise RuntimeError("Gemini: 画像が生成されませんでした（安全フィルタの可能性）")
+
+    img_obj = response.generated_images[0].image
+    # PIL Image として取得
+    if hasattr(img_obj, "_pil_image") and img_obj._pil_image:
+        pil_img = img_obj._pil_image
+    elif hasattr(img_obj, "image_bytes"):
+        pil_img = Image.open(io.BytesIO(img_obj.image_bytes))
+    else:
+        # .show() が使えるなら PIL 互換
+        pil_img = img_obj
+    return pil_img.resize((WIDTH, HEIGHT)).convert("RGB")
 
 
 # ─── 背景画像を取得（Gemini → Pollinations → Pillowフォールバック）──

@@ -79,8 +79,8 @@ def md_to_note_text(md: str) -> tuple[str, str]:
     body = re.sub(r"^## (.+)$", r"■ \1", body, flags=re.MULTILINE)
     # H3 → ▶ 見出し
     body = re.sub(r"^### (.+)$", r"▶ \1", body, flags=re.MULTILINE)
-    # 太字 **text** → text（そのまま）
-    body = re.sub(r"\*\*(.+?)\*\*", r"\1", body)
+    # 太字 **text** → 【text】（プレーンテキストでも強調が残る）
+    body = re.sub(r"\*\*(.+?)\*\*", r"【\1】", body)
     # インラインコード `text` → text
     body = re.sub(r"`(.+?)`", r"\1", body)
     # コードブロック ```...``` を整形
@@ -117,66 +117,96 @@ def login_and_save_session() -> None:
 
 
 def _upload_thumbnail(page, thumbnail_path: Path) -> None:
-    """note.com のアイキャッチ画像をアップロードする。"""
-    # 公開設定パネルを開く（サムネイル設定はここにある）
-    panel_opened = False
-    for selector in [
-        'button:has-text("公開設定")',
-        'button:has-text("公開する")',
-        '[data-testid="publish-settings-button"]',
-        'button[aria-label*="公開"]',
-    ]:
-        try:
-            btn = page.locator(selector).first
-            if btn.is_visible(timeout=3000):
-                btn.click()
-                page.wait_for_timeout(1500)
-                panel_opened = True
-                break
-        except PWTimeout:
-            continue
+    """note.com のアイキャッチ画像をアップロードする。
 
-    if not panel_opened:
-        print("  ⚠ 公開設定パネルが開けませんでした。手動でアイキャッチを設定してください。")
-        return
-
-    # file input を探してアップロード（note.comは通常 accept="image/*"）
+    note.com エディタでは:
+    - 方法A: ページ上部のアイキャッチ画像アイコンをクリック → file input
+    - 方法B: 公開設定パネル → アイキャッチ設定
+    - 方法C: 隠れた file input に直接セット
+    """
     uploaded = False
-    for selector in [
+
+    # --- 方法C (最優先): hidden file input を直接探す ---
+    for sel in [
         'input[type="file"][accept*="image"]',
         'input[type="file"]',
     ]:
         try:
-            fi = page.locator(selector)
+            fi = page.locator(sel)
             if fi.count() > 0:
                 fi.first.set_input_files(str(thumbnail_path))
                 page.wait_for_timeout(3000)
-                print("  ✅ アイキャッチアップロード完了")
+                print("  ✅ アイキャッチアップロード完了（file input 直接）")
                 uploaded = True
                 break
         except Exception as e:
-            print(f"  ⚠ アップロード試行失敗 ({e})")
+            print(f"  方法C試行: {e}")
 
-    if not uploaded:
-        print("  ⚠ ファイル入力が見つかりませんでした。手動でアイキャッチを設定してください。")
+    if uploaded:
+        return
 
-    # パネルを閉じる（Escape or 閉じるボタン）
-    for close_sel in [
-        'button:has-text("閉じる")',
-        'button[aria-label*="閉じ"]',
-        '[data-testid="close-button"]',
+    # --- 方法A: エディタ上部のアイキャッチアイコンをクリック ---
+    for sel in [
+        'button[aria-label*="アイキャッチ"]',
+        'button[aria-label*="画像"]',
+        'button[aria-label*="ヘッダー"]',
+        '[class*="eyecatch"] button',
+        '[class*="header-image"] button',
+        '[class*="thumbnail"] button',
+        # note.com のタイトル上部にあるアイコンボタン
+        '.p-editor__eyecatch',
+        '[data-testid*="eyecatch"]',
     ]:
         try:
-            btn = page.locator(close_sel).first
+            btn = page.locator(sel).first
             if btn.is_visible(timeout=2000):
                 btn.click()
+                page.wait_for_timeout(1500)
+                # クリック後に file input が出現するか確認
+                fi = page.locator('input[type="file"]')
+                if fi.count() > 0:
+                    fi.first.set_input_files(str(thumbnail_path))
+                    page.wait_for_timeout(3000)
+                    print("  ✅ アイキャッチアップロード完了（アイコン経由）")
+                    uploaded = True
+                break
+        except PWTimeout:
+            continue
+
+    if uploaded:
+        return
+
+    # --- 方法B: 公開設定パネル経由 ---
+    for sel in [
+        'button:has-text("公開設定")',
+        'button:has-text("公開する")',
+        'button:has-text("…")',
+        'button:has-text("その他")',
+        'button[aria-label*="設定"]',
+        'button[aria-label*="公開"]',
+        'button[aria-label*="メニュー"]',
+    ]:
+        try:
+            btn = page.locator(sel).first
+            if btn.is_visible(timeout=2000):
+                btn.click()
+                page.wait_for_timeout(1500)
+                fi = page.locator('input[type="file"]')
+                if fi.count() > 0:
+                    fi.first.set_input_files(str(thumbnail_path))
+                    page.wait_for_timeout(3000)
+                    print("  ✅ アイキャッチアップロード完了（公開設定経由）")
+                    uploaded = True
+                # パネルを閉じる
+                page.keyboard.press("Escape")
                 page.wait_for_timeout(500)
                 break
         except PWTimeout:
-            pass
-    else:
-        page.keyboard.press("Escape")
-        page.wait_for_timeout(500)
+            continue
+
+    if not uploaded:
+        print(f"  ⚠ アイキャッチ自動アップロードできませんでした。")
+        print(f"    サムネイルは {thumbnail_path} に保存済みです。手動で設定してください。")
 
 
 def publish_draft(dry_run: bool = False) -> None:
